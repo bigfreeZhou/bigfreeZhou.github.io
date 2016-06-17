@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>圆肥粥铺</title>
+  <subtitle>白日不到处，青春恰自来&lt;br/&gt;苔花如米小，也学牡丹开</subtitle>
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="http://bigfree.gitcafe.io/"/>
+  <updated>2016-06-17T03:31:16.778Z</updated>
+  <id>http://bigfree.gitcafe.io/</id>
+  
+  <author>
+    <name>圆肥粥</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Linux 根目录空间离奇消失之谜</title>
+    <link href="http://bigfree.gitcafe.io/2016/06/17/LinuxDiskDisappear/"/>
+    <id>http://bigfree.gitcafe.io/2016/06/17/LinuxDiskDisappear/</id>
+    <published>2016-06-17T02:31:08.000Z</published>
+    <updated>2016-06-17T03:31:16.778Z</updated>
+    
+    <content type="html">&lt;h2 id=&quot;Linux-根目录空间离奇消失之谜&quot;&gt;&lt;a href=&quot;#Linux-根目录空间离奇消失之谜&quot; class=&quot;headerlink&quot; title=&quot;Linux 根目录空间离奇消失之谜&quot;&gt;&lt;/a&gt;Linux 根目录空间离奇消失之谜&lt;/h2&gt;&lt;p&gt;有一台机器kafka不正常，发现根目录磁盘满了，怀疑是机器根目录满造成kafka运行不正常，于是准备去清理一下根目录空间，运行 &lt;code&gt;du -sh *&lt;/code&gt; ，并没有发现磁盘占用特别高的目录和文件。之前有遇到过这种情况，是因为删除文件的句柄还被正在运行的进程持有。用&lt;code&gt;lsof -n | delete&lt;/code&gt;查看并没有发现此类进程。尝试重启机器没有解决问题。&lt;/p&gt;
+&lt;p&gt;回想了下之前这台机子换过一块磁盘，这块磁盘之前挂载在/data5目录下。换完磁盘后重新挂载了一次，之前的/data5 目录没有清理，会不会是这个原因造成，于是先把这块盘umount，执行&lt;code&gt;fuser -km /data5 &amp;amp;&amp;amp; umount /data5&lt;/code&gt;。果然 /data5 目录下有大量文件，删除后重新挂载&lt;code&gt;mount -a&lt;/code&gt;，根目录的磁盘空间就回来了。&lt;/p&gt;
+</content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Linux-根目录空间离奇消失之谜&quot;&gt;&lt;a href=&quot;#Linux-根目录空间离奇消失之谜&quot; class=&quot;headerlink&quot; title=&quot;Linux 根目录空间离奇消失之谜&quot;&gt;&lt;/a&gt;Linux 根目录空间离奇消失之谜&lt;/h2&gt;&lt;p&gt;有一台机器kafka
+    
+    </summary>
+    
+      <category term="other" scheme="http://bigfree.gitcafe.io/categories/other/"/>
+    
+    
+      <category term="Linux" scheme="http://bigfree.gitcafe.io/tags/Linux/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>MySQL主从备份配置</title>
+    <link href="http://bigfree.gitcafe.io/2016/02/15/ConfigMysqlMasterAndSlave/"/>
+    <id>http://bigfree.gitcafe.io/2016/02/15/ConfigMysqlMasterAndSlave/</id>
+    <published>2016-02-15T01:34:02.000Z</published>
+    <updated>2016-06-09T14:07:12.000Z</updated>
+    
+    <content type="html">&lt;h1 id=&quot;MySQL主从备份配置&quot;&gt;&lt;a href=&quot;#MySQL主从备份配置&quot; class=&quot;headerlink&quot; title=&quot;MySQL主从备份配置&quot;&gt;&lt;/a&gt;MySQL主从备份配置&lt;/h1&gt;&lt;hr&gt;
+&lt;h2 id=&quot;概述&quot;&gt;&lt;a href=&quot;#概述&quot; class=&quot;headerlink&quot; title=&quot;概述&quot;&gt;&lt;/a&gt;概述&lt;/h2&gt;&lt;p&gt;MySQL主从备份配置的原理是Master更新写入二进制日志文件，并维护日志文件的索引。Slave从二进制文件读取更新内容，在Slave上重新执行一遍来进行备份。&lt;/p&gt;
+&lt;p&gt;表的更新需要在Master上进行，否则可能会出现Master和Slave更新冲突。&lt;/p&gt;
+&lt;h2 id=&quot;环境&quot;&gt;&lt;a href=&quot;#环境&quot; class=&quot;headerlink&quot; title=&quot;环境&quot;&gt;&lt;/a&gt;环境&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;CentOS 7.0&lt;/li&gt;
+&lt;li&gt;MySQL5.7.10&lt;/li&gt;
+&lt;li&gt;Master Host IP : 10.16.13.128&lt;/li&gt;
+&lt;li&gt;Slave Host IP : 10.16.13.129&lt;/li&gt;
+&lt;li&gt;MySQL同步账户：-u username -p password&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;配置过程&quot;&gt;&lt;a href=&quot;#配置过程&quot; class=&quot;headerlink&quot; title=&quot;配置过程&quot;&gt;&lt;/a&gt;配置过程&lt;/h2&gt;&lt;h4 id=&quot;1-分别在主从服务器上安装MySQL-最好版本相同。&quot;&gt;&lt;a href=&quot;#1-分别在主从服务器上安装MySQL-最好版本相同。&quot; class=&quot;headerlink&quot; title=&quot;1. 分别在主从服务器上安装MySQL,最好版本相同。&quot;&gt;&lt;/a&gt;1. 分别在主从服务器上安装MySQL,最好版本相同。&lt;/h4&gt;&lt;h4 id=&quot;2-修改Master上MySQL配置文件my-cnf&quot;&gt;&lt;a href=&quot;#2-修改Master上MySQL配置文件my-cnf&quot; class=&quot;headerlink&quot; title=&quot;2. 修改Master上MySQL配置文件my.cnf&quot;&gt;&lt;/a&gt;2. 修改Master上MySQL配置文件my.cnf&lt;/h4&gt;&lt;figure class=&quot;highlight plain&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;[mysqld]&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;log-bin=mysql-bin   // [必须]启用二进制日志&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;server-id=1         // [必须]服务器唯一ID&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h4 id=&quot;3-修改Slave上MySQL配置文件my-cnf&quot;&gt;&lt;a href=&quot;#3-修改Slave上MySQL配置文件my-cnf&quot; class=&quot;headerlink&quot; title=&quot;3. 修改Slave上MySQL配置文件my.cnf&quot;&gt;&lt;/a&gt;3. 修改Slave上MySQL配置文件my.cnf&lt;/h4&gt;&lt;figure class=&quot;highlight plain&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;[mysqld]&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;log-bin=mysql-bin   // [非必须]Slave可以不启用二进制日志，配置二进制日志可以便于Master和Slave交换角色&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;server-id=2         // [必须]服务器唯一ID&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h4 id=&quot;4-重启Master和Slave上的MySQL&quot;&gt;&lt;a href=&quot;#4-重启Master和Slave上的MySQL&quot; class=&quot;headerlink&quot; title=&quot;4. 重启Master和Slave上的MySQL&quot;&gt;&lt;/a&gt;4. 重启Master和Slave上的MySQL&lt;/h4&gt;&lt;h4 id=&quot;5-在Master上使用root用户登录建立同步账户并授权Slave&quot;&gt;&lt;a href=&quot;#5-在Master上使用root用户登录建立同步账户并授权Slave&quot; class=&quot;headerlink&quot; title=&quot;5. 在Master上使用root用户登录建立同步账户并授权Slave&quot;&gt;&lt;/a&gt;5. 在Master上使用root用户登录建立同步账户并授权Slave&lt;/h4&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;mysql&amp;gt; GRANT REPLICATION SLAVE ON *.* to &#39;username&#39;@&#39;%&#39; identified by &#39;password&#39;;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;mysql&amp;gt; FLUSH PRIVILEGES;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h4 id=&quot;6-使用root账户登录Master查看Master状态&quot;&gt;&lt;a href=&quot;#6-使用root账户登录Master查看Master状态&quot; class=&quot;headerlink&quot; title=&quot;6. 使用root账户登录Master查看Master状态&quot;&gt;&lt;/a&gt;6. 使用root账户登录Master查看Master状态&lt;/h4&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;mysql&amp;gt; show master status;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;+------------------+----------+--------------+------------------+-------------------+&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;+------------------+----------+--------------+------------------+-------------------+&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;| mysql-bin.000002 |     6584 | thisonedb    | mysql            |                   |&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;+------------------+----------+--------------+------------------+-------------------+&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h4 id=&quot;7-配置Slave跟踪Master日志的位置&quot;&gt;&lt;a href=&quot;#7-配置Slave跟踪Master日志的位置&quot; class=&quot;headerlink&quot; title=&quot;7. 配置Slave跟踪Master日志的位置&quot;&gt;&lt;/a&gt;7. 配置Slave跟踪Master日志的位置&lt;/h4&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;mysql&amp;gt; change master to master_host=&#39;10.16.13.128&#39;,master_user=&#39;username&#39;,master_password=&#39;q123456&#39;,master_log_file=&#39;mysql-bin.000002&#39;,master_log_pos=6584;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;mysql&amp;gt; start slave;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h4 id=&quot;8-使用root账户登录MySQL核对Slave状态&quot;&gt;&lt;a href=&quot;#8-使用root账户登录MySQL核对Slave状态&quot; class=&quot;headerlink&quot; title=&quot;8. 使用root账户登录MySQL核对Slave状态&quot;&gt;&lt;/a&gt;8. 使用root账户登录MySQL核对Slave状态&lt;/h4&gt;&lt;figure class=&quot;highlight&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;14&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;mysql&amp;gt; show slave status\G;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;*************************** 1. row ***************************&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;               Slave_IO_State: Waiting for master to send event &lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;                  Master_Host: 10.16.13.128&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;                  Master_User: username&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;                  Master_Port: 3306&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;                Connect_Retry: 60&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;              Master_Log_File: mysql-bin.000002&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;          Read_Master_Log_Pos: 6584&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;               Relay_Log_File: bx-13-129-relay-bin.000003&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;                Relay_Log_Pos: 6797&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;        Relay_Master_Log_File: mysql-bin.000002&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;             Slave_IO_Running: Yes &lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;            Slave_SQL_Running: Yes&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;p&gt;需要特别核对Slave_IO_State、Slave_IO_Running、Slave_SQL_Running 值，以上值为正确配置状态。&lt;/p&gt;
+&lt;h4 id=&quot;9-检查主从备份是否配置成功，在Master上创建Table或插入数据，查看Slave数据是否与Master同步&quot;&gt;&lt;a href=&quot;#9-检查主从备份是否配置成功，在Master上创建Table或插入数据，查看Slave数据是否与Master同步&quot; class=&quot;headerlink&quot; title=&quot;9. 检查主从备份是否配置成功，在Master上创建Table或插入数据，查看Slave数据是否与Master同步&quot;&gt;&lt;/a&gt;9. 检查主从备份是否配置成功，在Master上创建Table或插入数据，查看Slave数据是否与Master同步&lt;/h4&gt;&lt;h4 id=&quot;10-用crontab设置定期任务执行脚本检查Slave状态&quot;&gt;&lt;a href=&quot;#10-用crontab设置定期任务执行脚本检查Slave状态&quot; class=&quot;headerlink&quot; title=&quot;10. 用crontab设置定期任务执行脚本检查Slave状态&quot;&gt;&lt;/a&gt;10. 用crontab设置定期任务执行脚本检查Slave状态&lt;/h4&gt;&lt;figure class=&quot;highlight plain&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;8&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;# !/bin/bash&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;array=($(mysql -uroot -p -e &amp;quot;show slave status\G&amp;quot; | grep &amp;quot;Running&amp;quot; | awk &amp;apos;&amp;#123;print $2&amp;#125;&amp;apos;))&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;if [ &amp;quot;$&amp;#123;array[0]&amp;#125;&amp;quot; == &amp;quot;Yes&amp;quot; ] || [ &amp;quot;$&amp;#123;array[1]&amp;#125;&amp;quot; == &amp;quot;Yes&amp;quot; ]&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;    then&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;        echo &amp;quot;Slave is OK&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;    else&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;        echo &amp;quot;Slave is error&amp;quot;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;fi&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+</content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;MySQL主从备份配置&quot;&gt;&lt;a href=&quot;#MySQL主从备份配置&quot; class=&quot;headerlink&quot; title=&quot;MySQL主从备份配置&quot;&gt;&lt;/a&gt;MySQL主从备份配置&lt;/h1&gt;&lt;hr&gt;
+&lt;h2 id=&quot;概述&quot;&gt;&lt;a href=&quot;#概述&quot; class=
+    
+    </summary>
+    
+      <category term="database" scheme="http://bigfree.gitcafe.io/categories/database/"/>
+    
+    
+      <category term="MySQL" scheme="http://bigfree.gitcafe.io/tags/MySQL/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>为VirtualBox中的Ubuntu配置双网卡</title>
+    <link href="http://bigfree.gitcafe.io/2015/05/01/ConifgDoubleNetworkAdapterInVirtualBox/"/>
+    <id>http://bigfree.gitcafe.io/2015/05/01/ConifgDoubleNetworkAdapterInVirtualBox/</id>
+    <published>2015-05-01T11:29:02.000Z</published>
+    <updated>2016-06-09T14:07:12.000Z</updated>
+    
+    <content type="html">&lt;h1 id=&quot;为什么要配置双网卡&quot;&gt;&lt;a href=&quot;#为什么要配置双网卡&quot; class=&quot;headerlink&quot; title=&quot;为什么要配置双网卡&quot;&gt;&lt;/a&gt;为什么要配置双网卡&lt;/h1&gt;&lt;hr&gt;
+&lt;p&gt;在VirtualBox中安装Ubuntu后，默认情况下有一块处于NAT模式的虚拟网卡，若宿主机可以上网，虚拟机也可以通过NAT访问宿主机所在网络，但是却无法实现宿主机和虚拟机之间的互联。&lt;br&gt;使用双网卡，一块网卡工作在NAT模式，另外一块网卡工作在Host-only模式，这样即实现了虚拟机上外网，又实现了虚拟机与宿主机之间的互联，即使在断网情况下也可以互联。世间也有两全美。&lt;/p&gt;
+&lt;h1 id=&quot;VirtualBox的几种虚拟网络连接模式&quot;&gt;&lt;a href=&quot;#VirtualBox的几种虚拟网络连接模式&quot; class=&quot;headerlink&quot; title=&quot;VirtualBox的几种虚拟网络连接模式&quot;&gt;&lt;/a&gt;VirtualBox的几种虚拟网络连接模式&lt;/h1&gt;&lt;hr&gt;
+&lt;p&gt;VirualBox有四种虚拟网络连接模式，包括NAT(网络地址转换) 模式、Bridge (桥接)模式、Host-Only(主机)模式、Internal(内网)模式。&lt;br&gt;具体它们的特点与区别可以参考&lt;a href=&quot;http://www.cnblogs.com/adforce/p/3363373.html&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;这里&lt;/a&gt;。&lt;/p&gt;
+&lt;h1 id=&quot;配置双网卡&quot;&gt;&lt;a href=&quot;#配置双网卡&quot; class=&quot;headerlink&quot; title=&quot;配置双网卡&quot;&gt;&lt;/a&gt;配置双网卡&lt;/h1&gt;&lt;hr&gt;
+&lt;h2 id=&quot;环境&quot;&gt;&lt;a href=&quot;#环境&quot; class=&quot;headerlink&quot; title=&quot;环境&quot;&gt;&lt;/a&gt;环境&lt;/h2&gt;&lt;p&gt;Win7 + VirtualBox4.3 + Ubuntu14.04&lt;/p&gt;
+&lt;h2 id=&quot;为宿主机添加Host-Only网络&quot;&gt;&lt;a href=&quot;#为宿主机添加Host-Only网络&quot; class=&quot;headerlink&quot; title=&quot;为宿主机添加Host-Only网络&quot;&gt;&lt;/a&gt;为宿主机添加Host-Only网络&lt;/h2&gt;&lt;p&gt;在宿主机的网络连接中查看是否存在VirtualBox Host-Only Network，若存在，则将网络配置到启用状态，并查看该网络所在内网网段。&lt;br&gt;&lt;img src=&quot;http://ww4.sinaimg.cn/mw1024/da4c24a4jw1erp0sicmykj20ag0bhwfl.jpg&quot; alt=&quot;Host-Only 网络详情&quot;&gt;&lt;br&gt;如图，宿主机Host-Only网络是192.168.57.*网段。因此稍后需要为Ubuntu的Host-Only网卡添加该网段的静态地址。&lt;br&gt;如果该Host-Only网络不存在，则需在VirtualBox中添加，添加方法为 管理 –&amp;gt; 全局设定 –&amp;gt; 网络 –&amp;gt; 仅主机(Host-Only)网络 –&amp;gt; 添加网络。&lt;br&gt;&lt;img src=&quot;http://ww1.sinaimg.cn/mw1024/da4c24a4jw1erp0sifn5jj20e20a4gmr.jpg&quot; alt=&quot;添加Host-Only网络&quot;&gt;&lt;/p&gt;
+&lt;h2 id=&quot;为虚拟机设置Host-Only网卡&quot;&gt;&lt;a href=&quot;#为虚拟机设置Host-Only网卡&quot; class=&quot;headerlink&quot; title=&quot;为虚拟机设置Host-Only网卡&quot;&gt;&lt;/a&gt;为虚拟机设置Host-Only网卡&lt;/h2&gt;&lt;p&gt;进入虚拟机设置 –&amp;gt; 网络 –&amp;gt; 网卡2，启用网络连接并选择Host-Only适配器和界面名称，具体配置见图。&lt;br&gt;&lt;img src=&quot;http://ww4.sinaimg.cn/mw1024/da4c24a4jw1erp0simmp3j20hu0bkjt8.jpg&quot; alt=&quot;设置Host-Only网卡&quot;&gt;&lt;/p&gt;
+&lt;h2 id=&quot;设置虚拟机Ubuntu网络&quot;&gt;&lt;a href=&quot;#设置虚拟机Ubuntu网络&quot; class=&quot;headerlink&quot; title=&quot;设置虚拟机Ubuntu网络&quot;&gt;&lt;/a&gt;设置虚拟机Ubuntu网络&lt;/h2&gt;&lt;p&gt;进入虚拟机Ubuntu，使用&lt;code&gt;ifconfig&lt;/code&gt;命令查看会发现只有一个网卡工作，因为第二块网卡还没有进行配置。&lt;br&gt;使用vim编辑&lt;code&gt;/etc/network/interfaces&lt;/code&gt;，添加第二块网卡的网络配置，宿主机需要长期连接虚拟机，需要为Host-Only网络配置静态IP，IP需要和宿主机的Host-Only网段一致。&lt;/p&gt;
+&lt;figure class=&quot;highlight plain&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;6&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;auto eth0&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;iface eth0 inet dhcp&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;auto eth1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;iface eth1 inet static&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;address 192.168.57.2&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;p&gt;重启网络或者系统。&lt;/p&gt;
+&lt;h2 id=&quot;检验配置效果&quot;&gt;&lt;a href=&quot;#检验配置效果&quot; class=&quot;headerlink&quot; title=&quot;检验配置效果&quot;&gt;&lt;/a&gt;检验配置效果&lt;/h2&gt;&lt;p&gt;进入Ubuntu使用&lt;code&gt;ifconfig&lt;/code&gt;查看网络状态，此时应该两张网卡都在工作。&lt;br&gt;&lt;img src=&quot;http://ww4.sinaimg.cn/mw1024/da4c24a4jw1erp0siuk1kj20f50bctdn.jpg&quot; alt=&quot;网络状态&quot;&gt;&lt;br&gt;在虚拟机使用&lt;code&gt;ping&lt;/code&gt;测试虚拟机向宿主机通信。&lt;br&gt;&lt;img src=&quot;http://ww3.sinaimg.cn/mw1024/da4c24a4jw1erp0siyyd0j20d002rmyg.jpg&quot; alt=&quot;ping宿主机&quot;&gt;&lt;br&gt;在宿主机使用&lt;code&gt;ping&lt;/code&gt;测试宿主机向虚拟机通信。&lt;br&gt;&lt;img src=&quot;http://ww4.sinaimg.cn/mw1024/da4c24a4jw1erp0sj1ho4j20b7054abq.jpg&quot; alt=&quot;ping虚拟机&quot;&gt;&lt;/p&gt;
+&lt;p&gt;完工(～﹃～)~zZ&lt;/p&gt;
+</content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;为什么要配置双网卡&quot;&gt;&lt;a href=&quot;#为什么要配置双网卡&quot; class=&quot;headerlink&quot; title=&quot;为什么要配置双网卡&quot;&gt;&lt;/a&gt;为什么要配置双网卡&lt;/h1&gt;&lt;hr&gt;
+&lt;p&gt;在VirtualBox中安装Ubuntu后，默认情况下有一块处于NAT模式
+    
+    </summary>
+    
+      <category term="linux" scheme="http://bigfree.gitcafe.io/categories/linux/"/>
+    
+    
+      <category term="linux" scheme="http://bigfree.gitcafe.io/tags/linux/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>使用hexo和GitCafe搭建独立博客</title>
+    <link href="http://bigfree.gitcafe.io/2015/04/29/UseHexoToBuildBlog/"/>
+    <id>http://bigfree.gitcafe.io/2015/04/29/UseHexoToBuildBlog/</id>
+    <published>2015-04-29T12:30:14.000Z</published>
+    <updated>2016-06-09T14:07:12.000Z</updated>
+    
+    <content type="html">&lt;h1 id=&quot;准备工作&quot;&gt;&lt;a href=&quot;#准备工作&quot; class=&quot;headerlink&quot; title=&quot;准备工作&quot;&gt;&lt;/a&gt;准备工作&lt;/h1&gt;&lt;hr&gt;
+&lt;p&gt;&lt;strong&gt;本教程采用 &lt;a href=&quot;http://hexo.io/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;hexo&lt;/a&gt; + &lt;a href=&quot;https://gitcafe.com/GitCafe/Help/wiki/Pages-%E7%9B%B8%E5%85%B3%E5%B8%AE%E5%8A%A9#wiki&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;GitCafe Pages&lt;/a&gt; + &lt;a href=&quot;http://zh.wikipedia.org/zh/Markdown&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Markdown&lt;/a&gt;实现独立博客构架。&lt;/strong&gt;&lt;/p&gt;
+&lt;h2 id=&quot;hexo&quot;&gt;&lt;a href=&quot;#hexo&quot; class=&quot;headerlink&quot; title=&quot;hexo&quot;&gt;&lt;/a&gt;&lt;a href=&quot;http://hexo.io/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;hexo&lt;/a&gt;&lt;/h2&gt;&lt;p&gt;&lt;a href=&quot;http://hexo.io/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;hexo&lt;/a&gt;是一个基于node.js的静态博客生成程序，支持&lt;a href=&quot;http://zh.wikipedia.org/zh/Markdown&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Markdown&lt;/a&gt;语法，可以快速生成静态网页。&lt;/p&gt;
+&lt;h2 id=&quot;GitCafe-Pages&quot;&gt;&lt;a href=&quot;#GitCafe-Pages&quot; class=&quot;headerlink&quot; title=&quot;GitCafe Pages&quot;&gt;&lt;/a&gt;&lt;a href=&quot;https://gitcafe.com/GitCafe/Help/wiki/Pages-%E7%9B%B8%E5%85%B3%E5%B8%AE%E5%8A%A9#wiki&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;GitCafe Pages&lt;/a&gt;&lt;/h2&gt;&lt;p&gt;&lt;a href=&quot;https://gitcafe.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;GitCafe&lt;/a&gt;是&lt;a href=&quot;https://github.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;GitHub&lt;/a&gt;的&lt;del&gt;山寨&lt;/del&gt;国产版本，由于众所周知的原因速度比&lt;a href=&quot;https://github.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;GitHub&lt;/a&gt;快上不少，并且提供类似与&lt;a href=&quot;https://pages.github.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;GitHub Pages&lt;/a&gt;的静态网页托管服务&lt;a href=&quot;https://gitcafe.com/GitCafe/Help/wiki/Pages-%E7%9B%B8%E5%85%B3%E5%B8%AE%E5%8A%A9#wiki&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;GitCafe Pages&lt;/a&gt;.&lt;/p&gt;
+&lt;h2 id=&quot;Markdown&quot;&gt;&lt;a href=&quot;#Markdown&quot; class=&quot;headerlink&quot; title=&quot;Markdown&quot;&gt;&lt;/a&gt;&lt;a href=&quot;http://zh.wikipedia.org/zh/Markdown&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Markdown&lt;/a&gt;&lt;/h2&gt;&lt;p&gt;&lt;a href=&quot;http://zh.wikipedia.org/zh/Markdown&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Markdown&lt;/a&gt; 是一种简单的标记语言，相比HTML，&lt;a href=&quot;http://zh.wikipedia.org/zh/Markdown&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Markdown&lt;/a&gt;语法更为简单，阅读和书写更为方便。这是一个简单的&lt;a href=&quot;http://wowubuntu.com/markdown/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Markdown教程&lt;/a&gt;。&lt;/p&gt;
+&lt;h1 id=&quot;hexo搭建本地博客&quot;&gt;&lt;a href=&quot;#hexo搭建本地博客&quot; class=&quot;headerlink&quot; title=&quot;hexo搭建本地博客&quot;&gt;&lt;/a&gt;hexo搭建本地博客&lt;/h1&gt;&lt;hr&gt;
+&lt;h2 id=&quot;安装node-js&quot;&gt;&lt;a href=&quot;#安装node-js&quot; class=&quot;headerlink&quot; title=&quot;安装node.js&quot;&gt;&lt;/a&gt;安装node.js&lt;/h2&gt;&lt;p&gt;下载系统对应版本的&lt;a href=&quot;https://nodejs.org/download/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;node.js&lt;/a&gt;，Windows下直接安装即可。&lt;/p&gt;
+&lt;h2 id=&quot;安装hexo&quot;&gt;&lt;a href=&quot;#安装hexo&quot; class=&quot;headerlink&quot; title=&quot;安装hexo&quot;&gt;&lt;/a&gt;安装hexo&lt;/h2&gt;&lt;p&gt;使用npm命令安装，打开cmd，执行：&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;$ npm install hexo -g&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;安装依赖插件&quot;&gt;&lt;a href=&quot;#安装依赖插件&quot; class=&quot;headerlink&quot; title=&quot;安装依赖插件&quot;&gt;&lt;/a&gt;安装依赖插件&lt;/h2&gt;&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;$ npm install&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;hexo命令&quot;&gt;&lt;a href=&quot;#hexo命令&quot; class=&quot;headerlink&quot; title=&quot;hexo命令&quot;&gt;&lt;/a&gt;hexo命令&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;初始化： &lt;code&gt;hexo init&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;添加新文章： &lt;code&gt;hexo n&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;生成静态页面： &lt;code&gt;hexo g&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;本地运行： &lt;code&gt;hexo s&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;部署： &lt;code&gt;hexo d&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;建立本地博客&quot;&gt;&lt;a href=&quot;#建立本地博客&quot; class=&quot;headerlink&quot; title=&quot;建立本地博客&quot;&gt;&lt;/a&gt;建立本地博客&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;创建博客目录&lt;/li&gt;
+&lt;li&gt;在cmd环境下进入博客目录，执行&lt;code&gt;hexo init&lt;/code&gt;初始化&lt;/li&gt;
+&lt;li&gt;执行&lt;code&gt;hexo g&lt;/code&gt;生成静态页面&lt;/li&gt;
+&lt;li&gt;执行&lt;code&gt;hexo s&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;浏览器中访问&lt;a href=&quot;http://localhost:4000/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;http://localhost:4000/&lt;/a&gt;，页面粗线了~&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&quot;http://ww4.sinaimg.cn/mw1024/da4c24a4jw1ernen9cqkvj20xx0cl772.jpg&quot; alt=&quot;初始页面&quot;&gt;&lt;/p&gt;
+&lt;h2 id=&quot;发表新文章&quot;&gt;&lt;a href=&quot;#发表新文章&quot; class=&quot;headerlink&quot; title=&quot;发表新文章&quot;&gt;&lt;/a&gt;发表新文章&lt;/h2&gt;&lt;p&gt;新文章保存在&lt;code&gt;博客目录\source\_posts&lt;/code&gt;下，使用Markdown语法书写，保存为.md文件，Markdown可以采用普通编辑器编辑，也可以采用支持Markdown语法高亮的高级编辑器，我使用的是SublimeText。&lt;/p&gt;
+&lt;figure class=&quot;highlight markdown&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;5&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;title: Hello hexo&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;date: 2015-04-29 21:30:14&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;span class=&quot;section&quot;&gt;tags:&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;---&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;Hello hexo！&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;p&gt;再次运行&lt;code&gt;hexo g&lt;/code&gt;和&lt;code&gt;hexo s&lt;/code&gt;就可以看到新文章啦。&lt;/p&gt;
+&lt;h2 id=&quot;使用主题&quot;&gt;&lt;a href=&quot;#使用主题&quot; class=&quot;headerlink&quot; title=&quot;使用主题&quot;&gt;&lt;/a&gt;使用主题&lt;/h2&gt;&lt;p&gt;hexo的默认主题还不错，如果不喜欢，hexo还提供了不少第三方主题供你选择，&lt;a href=&quot;https://github.com/hexojs/hexo/wiki/Themes&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;新世界的大门&lt;/a&gt;。&lt;br&gt;我选用了&lt;a href=&quot;https://github.com/wuchong/jacman&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Jacman主题&lt;/a&gt;，主题使用的方法可以参考&lt;a href=&quot;http://wuchong.me/jacman/2014/11/20/how-to-use-jacman/#more&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;这里&lt;/a&gt;。&lt;br&gt;下载主题需要使用Git，没有接触过可以参考此教程&lt;a href=&quot;http://git.oschina.net/progit/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;Pro Git&lt;/a&gt;。&lt;/p&gt;
+&lt;h2 id=&quot;使用微搜索实现站内搜索&quot;&gt;&lt;a href=&quot;#使用微搜索实现站内搜索&quot; class=&quot;headerlink&quot; title=&quot;使用微搜索实现站内搜索&quot;&gt;&lt;/a&gt;使用&lt;a href=&quot;http://tinysou.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;微搜索&lt;/a&gt;实现站内搜索&lt;/h2&gt;&lt;p&gt;Jacman主题可以直接支持google、百度和&lt;a href=&quot;http://tinysou.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;微搜索&lt;/a&gt;站内搜索。google国内使用不方便，百度效果不尽人意且设置繁琐。Swiftype和&lt;a href=&quot;http://tinysou.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;微搜索&lt;/a&gt;相对来说简单方便，这里采用&lt;a href=&quot;http://tinysou.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;微搜索&lt;/a&gt;。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;在&lt;a href=&quot;http://tinysou.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;微搜索&lt;/a&gt;中注册并创建一个搜索引擎，将你的网站添加到索引。&lt;/li&gt;
+&lt;li&gt;在主题_config.yml中配置如下&lt;/li&gt;
+&lt;/ul&gt;
+&lt;figure class=&quot;highlight markdown&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;tinysou_search:     ## http://tinysou.com/&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  enable: true&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  id: f8ccddee068deda3d94e ##换成你自己的搜索引擎ID&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h2 id=&quot;生成RSS&quot;&gt;&lt;a href=&quot;#生成RSS&quot; class=&quot;headerlink&quot; title=&quot;生成RSS&quot;&gt;&lt;/a&gt;生成RSS&lt;/h2&gt;&lt;p&gt;使用插件&lt;a href=&quot;https://github.com/hexojs/hexo-generator-feed&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;hexo-generator-feed&lt;/a&gt;生成RSS内容。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;安装插件&lt;/li&gt;
+&lt;/ul&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;$ npm install hexo-generator-feed --save&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;ul&gt;
+&lt;li&gt;在_config.yml中配置&lt;/li&gt;
+&lt;/ul&gt;
+&lt;figure class=&quot;highlight markdown&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;4&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;feed:&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  type: atom&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  path: atom.xml&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  limit: 20&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;ul&gt;
+&lt;li&gt;访问\atom.xml即可看到生成RSS内容&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;使用多说实现评论功能&quot;&gt;&lt;a href=&quot;#使用多说实现评论功能&quot; class=&quot;headerlink&quot; title=&quot;使用多说实现评论功能&quot;&gt;&lt;/a&gt;使用多说实现评论功能&lt;/h2&gt;&lt;p&gt;多说是一个国产的评论系统，可以和国内众多的社交平台绑定分享。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;登录多说后，创建站点&lt;br&gt;&lt;img src=&quot;http://ww3.sinaimg.cn/mw1024/da4c24a4gw1erneyx1n36j20g50gnaci.jpg&quot; alt=&quot;多说&quot;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;在jecman主题配置文件_config.yml中设置&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;figure class=&quot;highlight markdown&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;duoshuo_shortname: bigfree ## 需要换成你自己的多说站点shortname&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;h1 id=&quot;发布到GitCafe&quot;&gt;&lt;a href=&quot;#发布到GitCafe&quot; class=&quot;headerlink&quot; title=&quot;发布到GitCafe&quot;&gt;&lt;/a&gt;发布到&lt;a href=&quot;https://gitcafe.com/&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;GitCafe&lt;/a&gt;&lt;/h1&gt;&lt;hr&gt;
+&lt;ul&gt;
+&lt;li&gt;注册帐号，创建新项目，新项目的名称需要和用户名相同。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src=&quot;http://ww4.sinaimg.cn/mw1024/da4c24a4jw1ernenb8xnaj20i40elq4i.jpg&quot; alt=&quot;创建项目&quot;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;将本机的SSH公钥添加到GitCafe，不知道如何做的可以参考&lt;a href=&quot;https://gitcafe.com/GitCafe/Help/wiki/%E5%A6%82%E4%BD%95%E5%AE%89%E8%A3%85%E5%92%8C%E8%AE%BE%E7%BD%AE%20Git&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;这里&lt;/a&gt;。&lt;/li&gt;
+&lt;li&gt;打开博客目录下的_config.yml文件，在最后添加如下设置&lt;/li&gt;
+&lt;/ul&gt;
+&lt;figure class=&quot;highlight markdown&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;4&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;deploy:&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;span class=&quot;code&quot;&gt;    type: git&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;span class=&quot;code&quot;&gt;    repository: git@gitcafe.com:bigfree/bigfree.git&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;span class=&quot;code&quot;&gt;    branch: gitcafe-pages&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;ul&gt;
+&lt;li&gt;安装git插件&lt;a href=&quot;https://github.com/hexojs/hexo-deployer-git&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;hexo-deployer-git&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;$ npm install hexo-deployer-git --save&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;ul&gt;
+&lt;li&gt;生成博客，并发布。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;$ hexo g&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;$ hexo d&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;ul&gt;
+&lt;li&gt;访问页面&lt;a href=&quot;http://bigfree.gitcafe.io/&quot;&gt;http://bigfree.gitcafe.io/&lt;/a&gt;，就能看到自己的博客了。&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;准备工作&quot;&gt;&lt;a href=&quot;#准备工作&quot; class=&quot;headerlink&quot; title=&quot;准备工作&quot;&gt;&lt;/a&gt;准备工作&lt;/h1&gt;&lt;hr&gt;
+&lt;p&gt;&lt;strong&gt;本教程采用 &lt;a href=&quot;http://hexo.io/&quot; target=&quot;_blank&quot; r
+    
+    </summary>
+    
+      <category term="other" scheme="http://bigfree.gitcafe.io/categories/other/"/>
+    
+    
+      <category term="hexo" scheme="http://bigfree.gitcafe.io/tags/hexo/"/>
+    
+      <category term="GitCafe" scheme="http://bigfree.gitcafe.io/tags/GitCafe/"/>
+    
+  </entry>
+  
+</feed>
